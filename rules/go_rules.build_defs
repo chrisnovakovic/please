@@ -820,9 +820,9 @@ def go_get(name:str, get:str|list, repo:str='', deps:list=[], exported_deps:list
 
     Args:
       name (str): Name of the rule
-      get (str): Target to get (eg. "github.com/gorilla/mux"). Can also be a list of multiple in
-                 which case they are fetched separately and compiled together, which can be useful
-                 for avoiding issues with circular dependencies.
+      get (str | list): Target(s) to get (eg. "github.com/gorilla/mux"). If the list form is used, the
+                        targets are fetched separately and compiled together, which can be useful for
+                        avoiding issues with circular dependencies.
       repo (str): Location of a Git repository to fetch from.
       deps (list): Dependencies
       exported_deps (list): Dependencies to make available to anything using this rule.
@@ -832,10 +832,10 @@ def go_get(name:str, get:str|list, repo:str='', deps:list=[], exported_deps:list
                                  that target.
       binary (bool): True if the output of the rule is a binary.
       test_only (bool): If true this rule will only be visible to tests.
-      install (list): Allows specifying the exact list of packages to install. If this is not passed,
-                      the package passed to 'get' is installed. If you pass this for subpackages, you
-                      will need to explicitly add an empty string to the list if you want to install
-                      the root package from this repo.
+      install (list): Only install listed (sub)packages. If the string form of 'get' is used, elements in
+                      this list may be "relative" package paths, in which case they will be transformed into
+                      full package paths by prefixing the name of the target's root package; this means that
+                      the empty string will be transformed into the name of the target's root package itself.
       revision (str): Git hash to check out before building. Only works for git at present,
                       not for other version control systems.
       strip (list | dict): List of paths to strip from the target after downloading but before building it.
@@ -897,12 +897,22 @@ def go_get(name:str, get:str|list, repo:str='', deps:list=[], exported_deps:list
             licences = licences,
             module_major_version = module_major_version,
         )
-        outs += [getroot]
         srcs += [get_rule]
         provides = {'go': go_rule, 'go_src': get_rule}
         if install:
-            all_installs += [i if i.startswith(getroot) else (getroot + '/' + i) for i in install]
+            installs = []
+
+            if len(get) == 1:
+                installs = [i if i.startswith(getroot) else (getroot + '/' + i) for i in install]
+            else:
+                installs = [i for i in install if i == getroot or i.startswith(getroot + '/')]
+
+            if installs:
+                outs += [getroot]
+
+            all_installs += installs
         else:
+            outs += [getroot]
             all_installs += [getone]
 
     # Now compile it in a separate step.
