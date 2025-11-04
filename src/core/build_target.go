@@ -1597,6 +1597,36 @@ func (target *BuildTarget) AllData() []BuildInput {
 	return target.allBuildInputs(target.Data, target.NamedData)
 }
 
+// IterAllData iterates over all the runtime data of this target.
+//
+// If transitive is true, the iterator includes all targets in the transitive closure of the runtime
+// data for this target.
+func (target *BuildTarget) IterAllData(graph *BuildGraph, transitive bool) iter.Seq[BuildInput] {
+	return func(yield func(BuildInput) bool) {
+		target.pushData(graph, transitive, make(map[string]bool), yield)
+	}
+}
+
+func (target *BuildTarget) pushData(graph *BuildGraph, transitive bool, done map[string]bool, yield func(BuildInput) bool) bool {
+	if done[target.String()] {
+		return true
+	}
+	done[target.String()] = true
+	for _, datum := range target.AllData() {
+		if !yield(datum) {
+			return false
+		}
+		if transitive {
+			if datumLabel, ok := datum.Label(); ok {
+				if !graph.TargetOrDie(datumLabel).pushData(graph, transitive, done, yield) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
 // AllDebugData returns all the data for debugging this rule.
 func (target *BuildTarget) AllDebugData() []BuildInput {
 	if target.Debug == nil {
@@ -1606,6 +1636,36 @@ func (target *BuildTarget) AllDebugData() []BuildInput {
 		return target.Debug.data
 	}
 	return target.allBuildInputs(target.Debug.data, target.Debug.namedData)
+}
+
+// IterAllDebugData iterates over all the runtime data for debugging this target.
+//
+// If transitive is true, the iterator includes all targets in the transitive closure of the runtime
+// data for debugging this target.
+func (target *BuildTarget) IterAllDebugData(graph *BuildGraph, transitive bool) iter.Seq[BuildInput] {
+	return func(yield func(BuildInput) bool) {
+		target.pushDebugData(graph, transitive, make(map[string]bool), yield)
+	}
+}
+
+func (target *BuildTarget) pushDebugData(graph *BuildGraph, transitive bool, done map[string]bool, yield func(BuildInput) bool) bool {
+	if done[target.String()] {
+		return true
+	}
+	done[target.String()] = true
+	for _, datum := range target.AllDebugData() {
+		if !yield(datum) {
+			return false
+		}
+		if transitive {
+			if datumLabel, ok := datum.Label(); ok {
+				if !graph.TargetOrDie(datumLabel).pushDebugData(graph, transitive, done, yield) {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 // DebugData returns unnamed data for debugging this rule.

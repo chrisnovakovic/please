@@ -257,7 +257,7 @@ func IterRuntimeFiles(graph *BuildGraph, target *BuildTarget, absoluteOuts bool,
 			}
 		}
 
-		for _, data := range target.AllData() {
+		for data := range target.IterAllData(graph, true) {
 			fullPaths := data.FullPaths(graph)
 			for i, dataPath := range data.Paths(graph) {
 				if !pushOut(fullPaths[i], dataPath) {
@@ -278,7 +278,7 @@ func IterRuntimeFiles(graph *BuildGraph, target *BuildTarget, absoluteOuts bool,
 		}
 
 		if target.Debug != nil {
-			for _, data := range target.AllDebugData() {
+			for data := range target.IterAllDebugData(graph, true) {
 				fullPaths := data.FullPaths(graph)
 				for i, dataPath := range data.Paths(graph) {
 					if !pushOut(fullPaths[i], dataPath) {

@@ -481,3 +481,29 @@ plz_e2e_test(
     cmd = "plz test --rerun //test:rm_ro_test_case",
     expect_output_doesnt_contain = "ERROR",
 )
+
+genrule(
+    name = "target_with_data",
+    outs = ["target_with_data"],
+    cmd = "touch $OUTS",
+    data = [":data"],
+)
+
+genrule(
+    name = "data",
+    outs = ["data"],
+    cmd = "touch $OUTS",
+)
+
+gentest(
+    name = "transitive_data_test_case",
+    data = [":target_with_data"],
+    labels = ["manual"],
+    no_test_output = True,
+    test_cmd = "test -f '" + package_name() + "/data'",
+)
+
+plz_e2e_test(
+    name = "transitive_data_test",
+    cmd = "plz test --rerun //test:transitive_data_test_case",
+)
